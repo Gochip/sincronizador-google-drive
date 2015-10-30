@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
 public class DriveQuickstart {
     /** Application name. */
@@ -41,6 +42,8 @@ public class DriveQuickstart {
     /** Global instance of the scopes required by this quickstart. */
     private static final List<String> SCOPES =
         Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY);
+
+    private static List<File> archivos;
 
     static {
         try {
@@ -95,19 +98,73 @@ public class DriveQuickstart {
         // Build a new authorized API client service.
         Drive service = getDriveService();
 
-        // Print the names and IDs for up to 10 files.
-        FileList result = service.files().list()
-             .setMaxResults(10)
-             .execute();
-        List<File> files = result.getItems();
-        if (files == null || files.size() == 0) {
-            System.out.println("No files found.");
-        } else {
-            System.out.println("Files:");
-            for (File file : files) {
-                System.out.printf("%s (%s)\n", file.getTitle(), file.getId());
+        System.out.println("==============================================");
+        System.out.println("¿Qué quieres hacer?");
+        System.out.println("1- Listar archivos");
+        System.out.println("2- Descargar un archivo");
+        System.out.println("3- Salir");
+        Scanner sc = new Scanner(System.in);
+        while(sc.hasNextInt()){
+            int opcion = sc.nextInt();
+            switch(opcion){
+                case 1:
+                    FileList result = service.files().list().setMaxResults(10).execute();
+                    archivos = result.getItems();
+                    if (archivos == null || archivos.size() == 0) {
+                        System.out.println("No se encontraron archivos...");
+                    } else {
+                        int i = 1;
+                        System.out.println("Archivos:");
+                        for (File archivo : archivos) {
+                            System.out.printf("%d) %s (%s)\n", i, archivo.getTitle(), archivo.getId());
+                            i++;
+                        }
+                    }
+                    break;
+                case 2:
+                    System.out.println("Ingrese el índice de archivo a descargar");
+                    int num = sc.nextInt();
+                    if(num >= 0 && num < archivos.size()){
+                        File file = archivos.get(num);
+                        System.out.println("Descargando: " + file.getTitle());
+                        System.out.println("Id: " + file.getId());
+                        InputStream is = downloadFile(service, file);
+                        if(is != null){
+                            int b = 0;
+                            while((b = is.read()) != -1){
+                                System.out.print(b);
+                            }
+                        }else{
+                            System.out.println("Input stream nulo");
+                        }
+                    }
+                    break;
+                case 3:
+                    System.out.println("Adiós");
+                    System.exit(0);
+                default:
+                    System.out.println("Error en la opción elegida");
             }
+            System.out.println("¿Qué quieres hacer?");
+            System.out.println("1- Listar archivos");
+            System.out.println("2- Descargar un archivo");
+            System.out.println("3- Salir");
         }
     }
 
+    private static InputStream downloadFile(Drive service, File file) {
+        if (file.getDownloadUrl() != null && file.getDownloadUrl().length() > 0) {
+            try {
+                // uses alt=media query parameter to request content
+                return service.files().get(file.getId()).executeMediaAsInputStream();
+            } catch (IOException e) {
+                // An error occurred.
+                e.printStackTrace();
+                return null;
+            }
+        } else {
+            // The file doesn't have any content stored on Drive.
+            return null;
+        }
+    }
 }
