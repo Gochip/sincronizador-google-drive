@@ -12,17 +12,32 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.*;
 import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.Drive.Children;
+import com.google.api.services.drive.model.ChildList;
+import com.google.api.services.drive.model.ChildReference;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
+import pull.*;
+
+/*
+
+Id de cliente:
+640742799856-5bc27aduse5rjrk9t3m24v288sik01jn.apps.googleusercontent.com
+
+Secreto de cliente:
+_7eQIFup1OY1FtfqgBPT1zTT
+
+*/
 public class DriveQuickstart {
     /** Application name. */
     private static final String APPLICATION_NAME =
-        "Drive API Java Quickstart";
+        "Sincronizador en Linux Ubuntu";
 
     /** Directory to store user credentials for this application. */
     private static final java.io.File DATA_STORE_DIR = new java.io.File(
@@ -40,7 +55,9 @@ public class DriveQuickstart {
 
     /** Global instance of the scopes required by this quickstart. */
     private static final List<String> SCOPES =
-        Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY);
+        Arrays.asList(DriveScopes.DRIVE_FILE);
+
+    private static List<File> archivos;
 
     static {
         try {
@@ -95,19 +112,95 @@ public class DriveQuickstart {
         // Build a new authorized API client service.
         Drive service = getDriveService();
 
-        // Print the names and IDs for up to 10 files.
-        FileList result = service.files().list()
-             .setMaxResults(10)
-             .execute();
-        List<File> files = result.getItems();
-        if (files == null || files.size() == 0) {
-            System.out.println("No files found.");
-        } else {
-            System.out.println("Files:");
-            for (File file : files) {
-                System.out.printf("%s (%s)\n", file.getTitle(), file.getId());
+        System.out.println("==============================================");
+        System.out.println("¿Qué quieres hacer?");
+        System.out.println("1- Listar archivos");
+        System.out.println("2- Descargar un archivo");
+        System.out.println("3- Salir");
+        Scanner sc = new Scanner(System.in);
+        while(sc.hasNextInt()){
+            int opcion = sc.nextInt();
+            switch(opcion){
+                case 1:
+                    FileList result = service.files().list().setMaxResults(10).execute();
+                    archivos = result.getItems();
+                    if (archivos == null || archivos.size() == 0) {
+                        System.out.println("No se encontraron archivos...");
+                    } else {
+                        int i = 1;
+                        System.out.println("Archivos:");
+                        for (File archivo : archivos) {
+                            System.out.printf("%d) %s (%s)\n", i, archivo.getTitle(), archivo.getId());
+                            i++;
+                        }
+                    }
+                    break;
+                case 2:
+                    System.out.println("Ingrese el índice de archivo a descargar");
+                    int num = sc.nextInt();
+                    if(archivos != null && num >= 0 && num < archivos.size()){
+                        File file = archivos.get(num);
+                        System.out.println("Descargando: " + file.getTitle());
+                        System.out.println("Id: " + file.getId());
+                        InputStream is = downloadFile(service, file);
+                        if(is != null){
+                            int b = 0;
+                            while((b = is.read()) != -1){
+                                System.out.print(b);
+                            }
+                        }else{
+                            System.out.println("Input stream nulo");
+                        }
+                    }
+                    break;
+                case 3:
+                    String folderId = "0B-GMGn56AKyuWlhxNko0WGhoQm8";
+                    Children.List request = service.children().list(folderId);
+
+                    do {
+                      try {
+                        ChildList children = request.execute();
+
+                        for (ChildReference child : children.getItems()) {
+                            File file = service.files().get(child.getId()).execute();
+                            if(!file.getExplicitlyTrashed()){
+                                System.out.println("File Id: " + file.getTitle());
+                                System.out.println("File Size: " + file.getFileSize());
+                            }
+                        }
+                        request.setPageToken(children.getNextPageToken());
+                      } catch (IOException e) {
+                        System.out.println("An error occurred: " + e);
+                        request.setPageToken(null);
+                      }
+                    } while (request.getPageToken() != null &&
+                             request.getPageToken().length() > 0);
+                    break;
+                case 4:
+                    System.out.println("Adiós");
+                    System.exit(0);
+                default:
+                    System.out.println("Error en la opción elegida");
             }
+            System.out.println("¿Qué quieres hacer?");
+            System.out.println("1- Listar archivos");
+            System.out.println("2- Descargar un archivo");
+            System.out.println("3- Salir");
         }
     }
 
+    private static InputStream downloadFile(Drive service, File file) {
+            System.out.println("Por descargar archivo");
+            try {
+                // uses alt=media query parameter to request content
+                System.out.println(file.getWebContentLink());
+                String downloadUrl = file.getExportLinks().get("application/pdf");
+                
+                return service.files().get(file.getId()).executeMediaAsInputStream();
+            } catch (IOException e) {
+                // An error occurred.
+                e.printStackTrace();
+                return null;
+            }
+    }
 }

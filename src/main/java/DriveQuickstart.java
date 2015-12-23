@@ -12,6 +12,9 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.*;
 import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.Drive.Children;
+import com.google.api.services.drive.model.ChildList;
+import com.google.api.services.drive.model.ChildReference;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,10 +23,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
+import pull.*;
+import reader.*;
+
+/*
+
+Id de cliente:
+640742799856-5bc27aduse5rjrk9t3m24v288sik01jn.apps.googleusercontent.com
+
+Secreto de cliente:
+_7eQIFup1OY1FtfqgBPT1zTT
+
+*/
 public class DriveQuickstart {
     /** Application name. */
     private static final String APPLICATION_NAME =
-        "Drive API Java Quickstart";
+        "Sincronizador en Linux Ubuntu";
 
     /** Directory to store user credentials for this application. */
     private static final java.io.File DATA_STORE_DIR = new java.io.File(
@@ -41,7 +56,7 @@ public class DriveQuickstart {
 
     /** Global instance of the scopes required by this quickstart. */
     private static final List<String> SCOPES =
-        Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY);
+        Arrays.asList(DriveScopes.DRIVE_FILE);
 
     private static List<File> archivos;
 
@@ -124,7 +139,7 @@ public class DriveQuickstart {
                 case 2:
                     System.out.println("Ingrese el índice de archivo a descargar");
                     int num = sc.nextInt();
-                    if(num >= 0 && num < archivos.size()){
+                    if(archivos != null && num >= 0 && num < archivos.size()){
                         File file = archivos.get(num);
                         System.out.println("Descargando: " + file.getTitle());
                         System.out.println("Id: " + file.getId());
@@ -140,6 +155,29 @@ public class DriveQuickstart {
                     }
                     break;
                 case 3:
+                    String folderId = "0B-GMGn56AKyuWlhxNko0WGhoQm8";
+                    Children.List request = service.children().list(folderId);
+
+                    do {
+                      try {
+                        ChildList children = request.execute();
+
+                        for (ChildReference child : children.getItems()) {
+                            File file = service.files().get(child.getId()).execute();
+                            if(!file.getExplicitlyTrashed()){
+                                System.out.println("File Id: " + file.getTitle());
+                                System.out.println("File Size: " + file.getFileSize());
+                            }
+                        }
+                        request.setPageToken(children.getNextPageToken());
+                      } catch (IOException e) {
+                        System.out.println("An error occurred: " + e);
+                        request.setPageToken(null);
+                      }
+                    } while (request.getPageToken() != null &&
+                             request.getPageToken().length() > 0);
+                    break;
+                case 4:
                     System.out.println("Adiós");
                     System.exit(0);
                 default:
@@ -153,18 +191,17 @@ public class DriveQuickstart {
     }
 
     private static InputStream downloadFile(Drive service, File file) {
-        if (file.getDownloadUrl() != null && file.getDownloadUrl().length() > 0) {
+            System.out.println("Por descargar archivo");
             try {
                 // uses alt=media query parameter to request content
+                System.out.println(file.getWebContentLink());
+                String downloadUrl = file.getExportLinks().get("application/pdf");
+                
                 return service.files().get(file.getId()).executeMediaAsInputStream();
             } catch (IOException e) {
                 // An error occurred.
                 e.printStackTrace();
                 return null;
             }
-        } else {
-            // The file doesn't have any content stored on Drive.
-            return null;
-        }
     }
 }
