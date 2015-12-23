@@ -160,6 +160,7 @@ public class DriveQuickstart {
                     do {
                       try {
                         ChildList children = request.execute();
+                        System.out.println(children.toPrettyString());
 
                         for (ChildReference child : children.getItems()) {
                             File file = service.files().get(child.getId()).execute();

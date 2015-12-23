@@ -14,15 +14,14 @@ public class Main{
         try{
             reader.init();
             
-            Pull pull = new Pull();
+            Drive drive = Authorization.getDriveService();
+            
+            Pull pull = new Pull(drive);
             List<SincgdFile> files = pull.getFiles("");
             
             for(int i = 0; i < files.size(); i++){
                 System.out.println(files.get(i).getName());
             }
-            
-            Drive drive = Authorization.getDriveService();
-            
         }catch(FileNotFoundException fnfex){
             System.err.println(fnfex.getMessage());
         }catch(IOException ioex){

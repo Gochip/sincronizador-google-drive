@@ -44,7 +44,7 @@ public class Authorization{
 
     /** Global instance of the scopes required by this quickstart. */
     private static final List<String> SCOPES =
-        Arrays.asList(DriveScopes.DRIVE_FILE);
+        Arrays.asList(DriveScopes.DRIVE);
 
     static {
         try {
