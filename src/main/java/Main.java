@@ -1,9 +1,12 @@
+import com.google.api.services.drive.Drive;
+
 import java.io.*;
 import java.util.*;
 
-import reader.*;
+import authorization.*;
 import model.*;
 import pull.*;
+import reader.*;
 
 public class Main{
     public static void main(String args[]){
@@ -17,6 +20,8 @@ public class Main{
             for(int i = 0; i < files.size(); i++){
                 System.out.println(files.get(i).getName());
             }
+            
+            Drive drive = Authorization.getDriveService();
             
         }catch(FileNotFoundException fnfex){
             System.err.println(fnfex.getMessage());
