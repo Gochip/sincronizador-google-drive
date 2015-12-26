@@ -15,9 +15,13 @@ public class Pull{
     public Pull(Drive drive){
         this.drive = drive;
     }
+    
+    public String toFolderId(String directory){
+        return directory;
+    }
 
     public List<SincgdFile> getFiles(String directory){
-        String folderId = "0B-GMGn56AKyub2MwdWI5OGhrbmc";
+        String folderId = toFolderId(directory);
         List<File> files = getFilesByFolderId(folderId);
         List<SincgdFile> filesSincgd = new LinkedList<>();
         for(File f : files){
@@ -27,6 +31,9 @@ public class Pull{
         return filesSincgd;
     }
     
+    /**
+    * Returns a list of folder id given a folder id.
+    */
     private List<File> getFilesByFolderId(String folderId){
         List<File> files = new LinkedList<>();
         try{
@@ -40,7 +47,6 @@ public class Pull{
                         if(!file.getExplicitlyTrashed()){
                             files.add(file);
                             System.out.println("File Id: " + file.getTitle());
-                            System.out.println("File Size: " + file.getFileSize());
                         }
                     }
                     request.setPageToken(children.getNextPageToken());
