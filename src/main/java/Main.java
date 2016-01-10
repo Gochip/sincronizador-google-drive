@@ -14,15 +14,25 @@ public class Main{
         try{
             reader.init();
             String directory = reader.getProperty("directory");
+            String accepted = reader.getProperty("accepted");
             File file = new File(directory);
             if(file.exists() && file.isDirectory()){
+                String[] d = accepted.split(",");
+                for(int i = 0; i < d.length; i++){
+                    System.out.println(d[i]);
+                }
+                ArrayList<String> acceptedArray = new ArrayList<>(Arrays.asList(d));
                 Drive drive = Authorization.getDriveService();
-            
+
                 Pull pull = new Pull(drive);
-                List<SincgdFile> files = pull.getFiles("root");
-                
+                List<SincgdFile> files = pull.getFiles(acceptedArray);
+
                 for(int i = 0; i < files.size(); i++){
-                    System.out.println(files.get(i).getName());
+                    String name = files.get(i).getName();
+                    if(acceptedArray.contains(name)){
+                        System.out.println("OK");
+                    }
+                    System.out.println("File name: " + name);
                 }
             }else{
                 System.err.println("Error, el directorio " + directory + " no existe");

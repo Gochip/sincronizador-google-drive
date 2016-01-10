@@ -10,7 +10,8 @@ public class SincgdReader{
 
     public void init() throws IOException, FileNotFoundException{
         FileInputStream fis = new FileInputStream(configFile);
-        prop.load(fis);
+        InputStreamReader isr = new InputStreamReader(fis, "UTF-8");
+        prop.load(isr);
     }
 
     public String getProperty(String key){
