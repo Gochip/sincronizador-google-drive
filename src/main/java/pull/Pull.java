@@ -11,6 +11,7 @@ import com.google.api.services.drive.model.ChildReference;
 import java.util.*;
 import java.nio.file.*;
 import java.io.IOException;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import model.*;
 
@@ -95,12 +96,14 @@ public class Pull{
         boolean ok = true;
         List<File> files = getFilesByFolderId(file.getId(), "");
         for(File f : files){
+            System.out.println("======> " + f.getTitle());
             if(f.getMimeType().equals(Constants.MIME_TYPE_FOLDER)){
                 ok &= downloadFolder(f, manager);
             }else{
-                ok &= downloadFile(f);
+                ok &= downloadFile(f, manager);
             }
         }
+        manager.skipDirectory();
         return ok;
     }
 
@@ -108,19 +111,12 @@ public class Pull{
     * Download a file.
     * @param the file to download.
     */
-    public boolean downloadFile(File file){
+    public boolean downloadFile(File file, ManagerDownloaderFolder manager){
         try{
             System.out.println("Downloading: " + file.getTitle());
 
             InputStream is = drive.files().get(file.getId()).executeMediaAsInputStream();
-            if(is != null){
-                int b = 0;
-                while((b = is.read()) != -1){
-                    System.out.print(b);
-                }
-            }else{
-                System.out.println("Input stream nulo");
-            }
+            manager.saveFile(is, file.getTitle());
         } catch (IOException e) {
             // An error occurred.
             e.printStackTrace();
@@ -130,11 +126,14 @@ public class Pull{
     }
 
     private class ManagerDownloaderFolder{
-        String currentFolder;
+        String currentDirectory = "";
+        String FILE_SEPARATOR = java.io.File.separator;
+
         void createDirectory(String name){
+            this.currentDirectory += FILE_SEPARATOR + name;
             try{
-                System.out.println("Creando PATH: " + directoryToSave + java.io.File.separator + name);
-                Path path = FileSystems.getDefault().getPath(directoryToSave + "/" + name);
+                System.out.println("Creando PATH: " + directoryToSave + currentDirectory);
+                Path path = FileSystems.getDefault().getPath(directoryToSave + currentDirectory);
                 
                 java.nio.file.Files.createDirectory(path);
             }catch(java.nio.file.InvalidPathException e){
@@ -144,8 +143,31 @@ public class Pull{
             }
         }
 
-        void saveFile(File file){
-            
+        void skipDirectory(){
+            System.out.println("Por salir de: " + this.currentDirectory);
+            int index = this.currentDirectory.lastIndexOf(FILE_SEPARATOR);
+            if(index != -1){
+                this.currentDirectory = this.currentDirectory.substring(0, index);
+            }else{
+                this.currentDirectory = "";
+            }
+            System.out.println("Ya salido: " + this.currentDirectory);
+        }
+
+        void saveFile(InputStream is, String name) throws IOException{
+            String path = directoryToSave + FILE_SEPARATOR + currentDirectory + FILE_SEPARATOR + name;
+            System.out.println("Saving file: " + path);
+            FileOutputStream os = new FileOutputStream(new java.io.File(path));
+            if(is != null){
+                int b = 0;
+                while((b = is.read()) != -1){
+                    os.write(b);
+                    //System.out.print(b);
+                }
+            }else{
+                System.out.println("Input stream nulo");
+            }
+            os.close();
         }
     }
 }
