@@ -13,29 +13,23 @@ public class Main{
         SincgdReader reader = new SincgdReader();
         try{
             reader.init();
-            String directory = reader.getProperty("directory");
+            String directoryToSave = reader.getProperty("directory");
             String accepted = reader.getProperty("accepted");
-            File file = new File(directory);
+            File file = new File(directoryToSave);
             if(file.exists() && file.isDirectory()){
                 String[] d = accepted.split(",");
-                for(int i = 0; i < d.length; i++){
-                    System.out.println(d[i]);
-                }
                 ArrayList<String> acceptedArray = new ArrayList<>(Arrays.asList(d));
                 Drive drive = Authorization.getDriveService();
 
-                Pull pull = new Pull(drive);
+                Pull pull = new Pull(drive, directoryToSave);
                 List<SincgdFile> files = pull.getFiles(acceptedArray);
 
                 for(int i = 0; i < files.size(); i++){
-                    String name = files.get(i).getName();
-                    if(acceptedArray.contains(name)){
-                        System.out.println("OK");
-                    }
-                    System.out.println("File name: " + name);
+                    SincgdFile f = files.get(i);
+                    pull.downloadFolder(f.getFile());
                 }
             }else{
-                System.err.println("Error, el directorio " + directory + " no existe");
+                System.err.println("Error, el directorio " + directoryToSave + " no existe");
             }
         }catch(FileNotFoundException fnfex){
             System.err.println(fnfex.getMessage());

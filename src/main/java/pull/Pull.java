@@ -9,13 +9,17 @@ import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ChildReference;
 
 import java.util.*;
+import java.nio.file.*;
 import java.io.IOException;
+import java.io.InputStream;
 import model.*;
 
 public class Pull{
     private Drive drive;
-    public Pull(Drive drive){
+    private String directoryToSave;
+    public Pull(Drive drive, String directoryToSave){
         this.drive = drive;
+        this.directoryToSave = directoryToSave;
     }
     
     public String toFolderId(String directory){
@@ -35,19 +39,20 @@ public class Pull{
 
     public List<SincgdFile> getFiles(ArrayList<String> directories){
         String folderId = "root";
-        String q = generateQ(directories);
+        String q = "(" + generateQ(directories) + ") and trashed=false";
         List<File> files = getFilesByFolderId(folderId, q);
         List<SincgdFile> filesSincgd = new LinkedList<>();
         for(File f : files){
-            SincgdFile file = new SincgdFile(f.getTitle());
+            SincgdFile file = new SincgdFile(f);
             filesSincgd.add(file);
         }
         return filesSincgd;
     }
     
     /**
-    * Returns a list of files given a folder id.
+    * Returns a list of files given a folder id and filter q.
     * @param String folderId is the folder id.
+    * @param String q is a filter.
     */
     private List<File> getFilesByFolderId(String folderId, String q){
         List<File> files = new LinkedList<>();
@@ -62,7 +67,6 @@ public class Pull{
                         File file = drive.files().get(child.getId()).execute();
                         if(!file.getExplicitlyTrashed()){
                             files.add(file);
-                            System.out.println("File Mime Type: " + file.getTitle());
                         }
                     }
                     request.setPageToken(children.getNextPageToken());
@@ -76,5 +80,72 @@ public class Pull{
             System.err.println(ex.getMessage());
         }       
         return files;
+    }
+
+    /**
+    * Download the files of a folder.
+    */
+    public boolean downloadFolder(File file){
+        return downloadFolder(file, new ManagerDownloaderFolder());
+    }
+    
+    private boolean downloadFolder(File file, ManagerDownloaderFolder manager){
+        System.out.println("Entering to folder: " + file.getTitle());
+        manager.createDirectory(file.getTitle());
+        boolean ok = true;
+        List<File> files = getFilesByFolderId(file.getId(), "");
+        for(File f : files){
+            if(f.getMimeType().equals(Constants.MIME_TYPE_FOLDER)){
+                ok &= downloadFolder(f, manager);
+            }else{
+                ok &= downloadFile(f);
+            }
+        }
+        return ok;
+    }
+
+    /**
+    * Download a file.
+    * @param the file to download.
+    */
+    public boolean downloadFile(File file){
+        try{
+            System.out.println("Downloading: " + file.getTitle());
+
+            InputStream is = drive.files().get(file.getId()).executeMediaAsInputStream();
+            if(is != null){
+                int b = 0;
+                while((b = is.read()) != -1){
+                    System.out.print(b);
+                }
+            }else{
+                System.out.println("Input stream nulo");
+            }
+        } catch (IOException e) {
+            // An error occurred.
+            e.printStackTrace();
+            return false;
+        }
+        return false;
+    }
+
+    private class ManagerDownloaderFolder{
+        String currentFolder;
+        void createDirectory(String name){
+            try{
+                System.out.println("Creando PATH: " + directoryToSave + java.io.File.separator + name);
+                Path path = FileSystems.getDefault().getPath(directoryToSave + "/" + name);
+                
+                java.nio.file.Files.createDirectory(path);
+            }catch(java.nio.file.InvalidPathException e){
+                
+            }catch(IOException ex){
+                
+            }
+        }
+
+        void saveFile(File file){
+            
+        }
     }
 }

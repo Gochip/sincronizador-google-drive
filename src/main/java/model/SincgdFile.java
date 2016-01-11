@@ -1,12 +1,22 @@
 package model;
 
+import com.google.api.services.drive.model.*;
+
 public class SincgdFile{
-    private String name;
-    public SincgdFile(String name){
-        this.name = name;
+    private File file;
+    public SincgdFile(File file){
+        this.file = file;
+    }
+    
+    public File getFile(){
+        return this.file;
     }
 
     public String getName(){
-        return this.name;
+        return this.file.getTitle();
+    }
+    
+    public String getId(){
+        return "";
     }
 }
