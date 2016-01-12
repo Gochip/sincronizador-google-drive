@@ -4,6 +4,7 @@ import com.google.api.services.drive.model.*;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.Drive.Children;
 import com.google.api.services.drive.Drive.Files;
+import com.google.api.client.util.DateTime;
 import com.google.api.services.drive.model.ChildList;
 import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ChildReference;
@@ -13,10 +14,16 @@ import java.nio.file.*;
 import java.io.IOException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import model.*;
+import database.*;
 
 public class Pull{
     private Drive drive;
+    /**
+    * Is the directory to save files synchronized.
+    */
     private String directoryToSave;
     public Pull(Drive drive, String directoryToSave){
         this.drive = drive;
@@ -91,16 +98,17 @@ public class Pull{
     }
     
     private boolean downloadFolder(File file, ManagerDownloaderFolder manager){
-        System.out.println("Entering to folder: " + file.getTitle());
-        manager.createDirectory(file.getTitle());
+        manager.enterDirectory(file.getTitle());
+        manager.createDirectory();
         boolean ok = true;
         List<File> files = getFilesByFolderId(file.getId(), "");
         for(File f : files){
-            System.out.println("======> " + f.getTitle());
             if(f.getMimeType().equals(Constants.MIME_TYPE_FOLDER)){
                 ok &= downloadFolder(f, manager);
             }else{
-                ok &= downloadFile(f, manager);
+                if(!manager.existsFile(f)){
+                    ok &= downloadFile(f, manager);
+                }
             }
         }
         manager.skipDirectory();
@@ -113,10 +121,8 @@ public class Pull{
     */
     public boolean downloadFile(File file, ManagerDownloaderFolder manager){
         try{
-            System.out.println("Downloading: " + file.getTitle());
-
             InputStream is = drive.files().get(file.getId()).executeMediaAsInputStream();
-            manager.saveFile(is, file.getTitle());
+            manager.saveFile(is, file);
         } catch (IOException e) {
             // An error occurred.
             e.printStackTrace();
@@ -129,13 +135,15 @@ public class Pull{
         String currentDirectory = "";
         String FILE_SEPARATOR = java.io.File.separator;
 
-        void createDirectory(String name){
-            this.currentDirectory += FILE_SEPARATOR + name;
+        void createDirectory(){
             try{
-                System.out.println("Creando PATH: " + directoryToSave + currentDirectory);
-                Path path = FileSystems.getDefault().getPath(directoryToSave + currentDirectory);
-                
-                java.nio.file.Files.createDirectory(path);
+                java.io.File file = new java.io.File(directoryToSave + currentDirectory);
+                if(!file.exists()){
+                    System.out.println("Creating directory: " + directoryToSave + currentDirectory);
+                    Path path = FileSystems.getDefault().getPath(directoryToSave + currentDirectory);
+                    java.nio.file.Files.createDirectory(path);
+                    System.out.println("Directory created");
+                }
             }catch(java.nio.file.InvalidPathException e){
                 
             }catch(IOException ex){
@@ -143,31 +151,74 @@ public class Pull{
             }
         }
 
+        /**
+        * Checks if exists file.
+        */
+        boolean existsFile(File file){
+            /*try{
+                String checksum = file.getMd5Checksum();
+                if(checksum == null) return false;
+                MessageDigest messageDigest = MessageDigest.getInstance("MD5");
+                java.io.File f = new java.io.File(directoryToSave + currentDirectory + FILE_SEPARATOR + file.getTitle());
+                if(!f.exists()){
+                    return false;
+                }
+                java.io.FileInputStream fis = new java.io.FileInputStream(f);
+                byte buffer[] = new byte[1024];
+                while(fis.read(buffer) != -1){
+                    messageDigest.update(buffer);
+                }
+                byte[] hashBytes = messageDigest.digest();
+                StringBuilder hexString = new StringBuilder();
+                for (int i = 0; i < hashBytes.length; i++) {
+                    if ((0xff & hashBytes[i]) < 0x10) {
+                        hexString.append("0"
+                                + Integer.toHexString((0xFF & hashBytes[i])));
+                    } else {
+                        hexString.append(Integer.toHexString(0xFF & hashBytes[i]));
+                    }
+                }
+                System.out.println(hexString + " ========= " + checksum);
+                fis.close();
+                return hexString.equals(checksum);
+            } catch(NoSuchAlgorithmException algex){
+                System.err.println(algex.getMessage());
+            } catch(IOException ex){
+                System.err.println(ex.getMessage());
+            }
+            return false;*/
+            return false;
+        }
+
+        void enterDirectory(String name){
+            this.currentDirectory += FILE_SEPARATOR + name;
+        }
+
         void skipDirectory(){
-            System.out.println("Por salir de: " + this.currentDirectory);
             int index = this.currentDirectory.lastIndexOf(FILE_SEPARATOR);
             if(index != -1){
                 this.currentDirectory = this.currentDirectory.substring(0, index);
             }else{
                 this.currentDirectory = "";
             }
-            System.out.println("Ya salido: " + this.currentDirectory);
         }
 
-        void saveFile(InputStream is, String name) throws IOException{
-            String path = directoryToSave + FILE_SEPARATOR + currentDirectory + FILE_SEPARATOR + name;
+        void saveFile(InputStream is, File file) throws IOException{
+            String path = directoryToSave + FILE_SEPARATOR + currentDirectory + FILE_SEPARATOR + file.getTitle();
             System.out.println("Saving file: " + path);
             FileOutputStream os = new FileOutputStream(new java.io.File(path));
             if(is != null){
                 int b = 0;
                 while((b = is.read()) != -1){
                     os.write(b);
-                    //System.out.print(b);
                 }
             }else{
                 System.out.println("Input stream nulo");
             }
             os.close();
+            Database database = Database.getInstance();
+            database.registerFile(file);
+            System.out.println("File saved");
         }
     }
 }
