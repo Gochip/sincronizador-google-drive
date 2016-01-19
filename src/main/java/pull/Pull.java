@@ -187,7 +187,8 @@ public class Pull{
                 System.err.println(ex.getMessage());
             }
             return false;*/
-            return false;
+            ManagerDatabase managerDatabase = ManagerDatabase.getInstance();
+            return managerDatabase.existsFile(file);
         }
 
         void enterDirectory(String name){
@@ -204,7 +205,7 @@ public class Pull{
         }
 
         void saveFile(InputStream is, File file) throws IOException{
-            String path = directoryToSave + FILE_SEPARATOR + currentDirectory + FILE_SEPARATOR + file.getTitle();
+            String path = directoryToSave + currentDirectory + FILE_SEPARATOR + file.getTitle();
             System.out.println("Saving file: " + path);
             FileOutputStream os = new FileOutputStream(new java.io.File(path));
             if(is != null){
@@ -216,9 +217,9 @@ public class Pull{
                 System.out.println("Input stream nulo");
             }
             os.close();
-            Database database = Database.getInstance();
-            database.registerFile(file);
-            System.out.println("File saved");
+            ManagerDatabase managerDatabase = ManagerDatabase.getInstance();
+            managerDatabase.registerFile(file);
+            System.out.println("File saved\n");
         }
     }
 }
